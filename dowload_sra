@@ -1,0 +1,37 @@
+#This program will grab 2 files from ncbi
+
+
+from ftplib import FTP
+"""These commands will navigate through ncbi to download the specific SRA files"""
+webfile = 'ftp-trace.ncbi.nlm.nih.gov'
+f = FTP(webfile)
+f.login()
+f.cwd('sra')
+f.cwd('sra-instant')
+f.cwd('reads')
+f.cwd('ByStudy')
+f.cwd('sra')
+f.cwd('SRP')
+f.cwd('SRP017')
+f.cwd('SRP017183')
+f.cwd('SRR617081')
+f.retrlines("LIST")
+f.retrbinary('RETR SRR617081.sra', open('SRR617081.sra', 'wb').write)
+f.quit()
+
+
+webfile = 'ftp-trace.ncbi.nlm.nih.gov'
+f = FTP(webfile)
+f.login()
+f.cwd('sra')
+f.cwd('sra-instant')
+f.cwd('reads')
+f.cwd('ByStudy')
+f.cwd('sra')
+f.cwd('SRP')
+f.cwd('SRP017')
+f.cwd('SRP017183')
+f.cwd('SRR617082')
+f.retrlines("LIST")
+f.retrbinary('RETR SRR617082.sra', open('SRR617082.sra', 'wb').write)
+f.quit()
