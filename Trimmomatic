@@ -1,49 +1,72 @@
+import time
 import subprocess
 from subprocess import Popen, PIPE
+
+start_time=time.time()
+
+#Split SRA files into left and right reads
 cmd = "/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617081.sra --split-3"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
 cmd = "/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617082.sra --split-3"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
+
+#Use Trimmomatic to clean reads and create paired/unpaired files
 cmd = "java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -phred33 -trimlog trimS1log SRR617081_1.fastq SRR617081_2.fastq SRR617081_1_paired.fastq SRR617081_1_unpaired.fastq SRR617081_2_paired.fastq SRR617081_2_unpaired.fastq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
 cmd = "java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -phred33 -trimlog trimS1log SRR617082_1.fastq SRR617082_2.fastq SRR617082_1_paired.fastq SRR617082_1_unpaired.fastq SRR617082_2_paired.fastq SRR617082_2_unpaired.fastq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
+
+#Create one big file for each type: left paired, right paired, left unpaired, right unpaired
 cmd = "cat SRR617081_1_paired.fastq  SRR617082_1_paired.fastq > all_1_paired.fastq"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
 cmd = "cat SRR617081_2_paired.fastq SRR617082_2_paired.fastq > all_2_paired.fastq"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
-cmd = "nohup cat all_1_paired.fastq | perl -lane 'print $F[0];' > all_1_paired_complete.fastq.adj &"
+cmd = "cat SRR617081_1_unpaired.fastq  SRR617082_1_unpaired.fastq > all_1_unpaired.fastq"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
 
-cmd = "nohup cat all_2_paired.fastq | perl -lane 'print $F[0];' > all_2_paired_complete.fastq.adj &"
+cmd = "cat SRR617081_2_unpaired.fastq SRR617082_2_unpaired.fastq > all_2_unpaired.fastq"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
-print "Return code: ", p.returncode
 print out.rstrip(), err.rstrip()
+
+cmd = "cat all_1_paired.fastq | perl -lane 'print $F[0];' > all_1_paired_complete.fastq.adj"
+p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
+out, err = p.communicate()
+print out.rstrip(), err.rstrip()
+
+cmd = "cat all_2_paired.fastq | perl -lane 'print $F[0];' > all_2_paired_complete.fastq.adj"
+p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
+out, err = p.communicate()
+print out.rstrip(), err.rstrip()
+
+cmd = "cat all_1_unpaired.fastq | perl -lane 'print $F[0];' > all_1_unpaired_complete.fastq.adj"
+p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
+out, err = p.communicate()
+print out.rstrip(), err.rstrip()
+
+cmd = "cat all_2_unpaired.fastq | perl -lane 'print $F[0];' > all_2_unpaired_complete.fastq.adj"
+p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
+out, err = p.communicate()
+print out.rstrip(), err.rstrip()
+
+elasped_time = time.time() - start_time
