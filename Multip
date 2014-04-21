@@ -1,0 +1,16 @@
+import multiprocessing as mp
+import subprocess
+import time
+from ftplib import FTP
+
+start_time=time.time()
+
+def call1(f):
+	subprocess.call(f,shell=True)
+	
+pool = mp.Pool(mp.cpu_count())
+
+print pool.map(call1,["/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617081.sra --split-3","/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617082.sra --split-3"])
+
+elapsed_time1 = time.time() - start_time
+print "Spliting SRA files took %d seconds" %elapsed_time1
