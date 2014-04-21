@@ -16,6 +16,10 @@ out, err = p.communicate()
 print out.rstrip(), err.rstrip()
 
 
+elapsed_time1 = time.time() - start_time
+print "Spliting SRA files took %d seconds" %elapsed_time1
+
+
 #Use Trimmomatic to clean reads and create paired/unpaired files
 cmd = "java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -phred33 -trimlog trimS1log SRR617081_1.fastq SRR617081_2.fastq SRR617081_1_paired.fastq SRR617081_1_unpaired.fastq SRR617081_2_paired.fastq SRR617081_2_unpaired.fastq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
@@ -26,6 +30,10 @@ cmd = "java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
 print out.rstrip(), err.rstrip()
+
+
+elapsed_time2 = time.time() - elapsed_time1
+print "Trimmomatic took %d seconds" %elapsed_time2
 
 
 #Create one big file for each type: left paired, right paired, left unpaired, right unpaired
@@ -69,4 +77,5 @@ p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
 print out.rstrip(), err.rstrip()
 
-elasped_time = time.time() - start_time
+elapsed_time3 = time.time() - elapsed_time2
+print "Combining files took %d seconds" %elapsed_time3
