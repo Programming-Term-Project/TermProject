@@ -1,6 +1,19 @@
 import subprocess
 from subprocess import Popen, PIPE
+import time
+
+start_time=time.time()
+
+#Split SRA files into left and right reads
 cmd = "/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617081.sra --split-3"
 p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
 out, err = p.communicate()
 print out.rstrip(), err.rstrip()
+
+cmd = "/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617082.sra --split-3"
+p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
+out, err = p.communicate()
+print out.rstrip(), err.rstrip()
+
+elapsed_time1 = time.time() - start_time
+print "Spliting SRA files took %d seconds" %elapsed_time1
