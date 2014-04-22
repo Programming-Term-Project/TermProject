@@ -1,22 +1,15 @@
 import time
 import subprocess
 from subprocess import Popen, PIPE
+import multiprocessing as mp
 
 start_time=time.time()
+def call1(f):
+	subprocess.call(f,shell=True)
+	
+pool = mp.Pool(mp.cpu_count())
 
-cmd: "qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_paired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_paired_complete.fastq.adj --pairs_together --JELLY_CPU 8 --PARALLEL_STATS --output /diag/home/jfeusier/all_samples_paired"
-p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
-out, err = p.communicate()
-print out.rstrip(), err.rstrip()
+print pool.map(call1,["qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_paired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_paired_complete.fastq.adj --pairs_together --JELLY_CPU 8 --PARALLEL_STATS --output /diag/home/jfeusier/all_samples_paired","qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_unpaired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_unpaired_complete.fastq.adj  --JELLY_CPU 8 --output /diag/home/jfeusier/all_samples_unpaired"])
 
 elapsed_time1 = time.time() - start_time
 print "Trinity for paired reads took %d seconds" %elapsed_time1
-
-
-cmd: "qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_unpaired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_unpaired_complete.fastq.adj  --JELLY_CPU 8 --output /diag/home/jfeusier/all_samples_unpaired"
-p = Popen(cmd , shell=True, stdout=PIPE, stderr=PIPE)
-out, err = p.communicate()
-print out.rstrip(), err.rstrip()
-
-elapsed_time2 = time.time() - elapsed_time1
-print "Trinity for paired reads took %d seconds" %elapsed_time2
