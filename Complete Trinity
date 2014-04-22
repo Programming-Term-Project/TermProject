@@ -1,0 +1,78 @@
+import time
+from ftplib import FTP
+import subprocess
+from subprocess import Popen, PIPE
+import multiprocessing as mp
+
+"""These commands will navigate through ncbi to download the specific SRA files"""
+
+start_time=time.time()
+
+webfile = 'ftp-trace.ncbi.nlm.nih.gov'
+f = FTP(webfile)
+f.login()
+f.cwd('sra')
+f.cwd('sra-instant')
+f.cwd('reads')
+f.cwd('ByStudy')
+f.cwd('sra')
+f.cwd('SRP')
+f.cwd('SRP017')
+f.cwd('SRP017183')
+f.cwd('SRR617085')
+f.retrlines("LIST")
+f.retrbinary('RETR SRR617085.sra', open('SRR617085.sra', 'wb').write)
+f.quit()
+
+
+webfile = 'ftp-trace.ncbi.nlm.nih.gov'
+f = FTP(webfile)
+f.login()
+f.cwd('sra')
+f.cwd('sra-instant')
+f.cwd('reads')
+f.cwd('ByStudy')
+f.cwd('sra')
+f.cwd('SRP')
+f.cwd('SRP017')
+f.cwd('SRP017183')
+f.cwd('SRR617086')
+f.retrlines("LIST")
+f.retrbinary('RETR SRR617086.sra', open('SRR617086.sra', 'wb').write)
+f.quit()
+
+elapsed_time1 = time.time() - start_time
+print "Downloading SRA files took %d seconds" %elapsed_time1
+
+
+
+def call1(f):
+	subprocess.call(f,shell=True)
+	
+pool = mp.Pool(mp.cpu_count())
+
+
+print pool.map(call1,["/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617081.sra --split-3","/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617082.sra --split-3"])
+
+elapsed_time2 = time.time() - elapsed_time1
+print "Trimmomatic took %d seconds" %elapsed_time2
+
+print pool.map(call1,["cat SRR617081_1_paired.fastq  SRR617082_1_paired.fastq > all_1_paired.fastq","cat SRR617081_2_paired.fastq SRR617082_2_paired.fastq > all_2_paired.fastq","cat SRR617081_1_unpaired.fastq  SRR617082_1_unpaired.fastq > all_1_unpaired.fastq","cat SRR617081_2_unpaired.fastq SRR617082_2_unpaired.fastq > all_2_unpaired.fastq"])
+
+elapsed_time3 = time.time() - elapsed_time2
+print "Combining files took %d seconds" %elapsed_time3
+
+
+print pool.map(call1,["cat all_1_paired.fastq | perl -lane 'print $F[0];' > all_1_paired_complete.fastq.adj","cat all_2_paired.fastq | perl -lane 'print $F[0];' > all_2_paired_complete.fastq.adj","cat all_1_unpaired.fastq | perl -lane 'print $F[0];' > all_1_unpaired_complete.fastq.adj","cat all_2_unpaired.fastq | perl -lane 'print $F[0];' > all_2_unpaired_complete.fastq.adj"])
+
+elapsed_time4 = time.time() - elapsed_time3
+print "Cleaning files took %d seconds" %elapsed_time4
+
+
+#print pool.map(call1,["qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_paired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_paired_complete.fastq.adj --pairs_together --JELLY_CPU 8 --PARALLEL_STATS --output /diag/home/jfeusier/all_samples_paired","qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_unpaired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_unpaired_complete.fastq.adj  --JELLY_CPU 8 --output /diag/home/jfeusier/all_samples_unpaired"])
+
+#elapsed_time5 = time.time() - elapsed_time4
+#print "Trinity for paired reads took %d seconds" %elapsed_time5
+
+
+
