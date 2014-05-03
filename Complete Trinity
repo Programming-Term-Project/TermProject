@@ -3,8 +3,23 @@ from ftplib import FTP
 import subprocess
 from subprocess import Popen, PIPE
 import multiprocessing as mp
+import smtplib
+import email
+import os
+from email.MIMEMultipart import MIMEMultipart
+from email.Utils import COMMASPACE
+from email.MIMEBase import MIMEBase
+from email.parser import Parser
+from email.MIMEImage import MIMEImage
+from email.MIMEText import MIMEText
+import mimetypes
 
-"""These commands will navigate through ncbi to download the specific SRA files"""
+"""This Python Script will download specific SRA files and run filtering and normalization
+these paired end reads.
+
+
+
+These commands will navigate through ncbi to download the specific SRA files"""
 
 start_time=time.time()
 
@@ -19,9 +34,9 @@ f.cwd('sra')
 f.cwd('SRP')
 f.cwd('SRP017')
 f.cwd('SRP017183')
-f.cwd('SRR617085')
+f.cwd('SRR617081')
 f.retrlines("LIST")
-f.retrbinary('RETR SRR617085.sra', open('SRR617085.sra', 'wb').write)
+f.retrbinary('RETR SRR617081.sra', open('SRR617081.sra', 'wb').write)
 f.quit()
 
 
@@ -36,13 +51,13 @@ f.cwd('sra')
 f.cwd('SRP')
 f.cwd('SRP017')
 f.cwd('SRP017183')
-f.cwd('SRR617086')
+f.cwd('SRR617082')
 f.retrlines("LIST")
-f.retrbinary('RETR SRR617086.sra', open('SRR617086.sra', 'wb').write)
+f.retrbinary('RETR SRR617082.sra', open('SRR617082.sra', 'wb').write)
 f.quit()
 
 elapsed_time1 = time.time() - start_time
-print "Downloading SRA files took %d seconds" %elapsed_time1
+#print "Downloading SRA files took %d seconds" %elapsed_time1
 
 
 
@@ -50,29 +65,72 @@ def call1(f):
 	subprocess.call(f,shell=True)
 	
 pool = mp.Pool(mp.cpu_count())
-
+"""These commands are to set up multiprocessing for subprocess calls"""
 
 print pool.map(call1,["/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617081.sra --split-3","/diag/software/sratoolkit/bin/fastq-dump.2.1.18 SRR617082.sra --split-3"])
+"""This command splits the SRA files into left (1) and right (2) reads"""
+elapsed_time2 = time.time() - start_time
+#print "Splitting SRA files took %d seconds" %elapsed_time2
 
-elapsed_time2 = time.time() - elapsed_time1
-print "Trimmomatic took %d seconds" %elapsed_time2
+
+print pool.map(call1,["java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -phred33 -trimlog trimS1log SRR617081_1.fastq SRR617081_2.fastq SRR617081_1_paired.fastq SRR617081_1_unpaired.fastq SRR617081_2_paired.fastq SRR617081_2_unpaired.fastq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30","java -jar /diag/cloud/jfeusier/Trimmomatic-0.32/trimmomatic-0.32.jar PE -phred33 -trimlog trimS1log SRR617082_1.fastq SRR617082_2.fastq SRR617082_1_paired.fastq SRR617082_1_unpaired.fastq SRR617082_2_paired.fastq SRR617082_2_unpaired.fastq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30"])
+"""This command runs Trimmomatic to clean up poor quality reads.  This also finds pairs for each left and right read.  
+Each output will contain a left paired output, a right paired output, a left unpaired output, and a right unpaired output"""
+elapsed_time3 = time.time() - start_time
+#print "Trimmomatic took %d seconds" %elapsed_time3
+
 
 print pool.map(call1,["cat SRR617081_1_paired.fastq  SRR617082_1_paired.fastq > all_1_paired.fastq","cat SRR617081_2_paired.fastq SRR617082_2_paired.fastq > all_2_paired.fastq","cat SRR617081_1_unpaired.fastq  SRR617082_1_unpaired.fastq > all_1_unpaired.fastq","cat SRR617081_2_unpaired.fastq SRR617082_2_unpaired.fastq > all_2_unpaired.fastq"])
-
-elapsed_time3 = time.time() - elapsed_time2
-print "Combining files took %d seconds" %elapsed_time3
+"""This command combines the four file types of individual SRA file into a complete file of each type."""
+elapsed_time4 = time.time() - start_time
+#print "Combining files took %d seconds" %elapsed_time4
 
 
 print pool.map(call1,["cat all_1_paired.fastq | perl -lane 'print $F[0];' > all_1_paired_complete.fastq.adj","cat all_2_paired.fastq | perl -lane 'print $F[0];' > all_2_paired_complete.fastq.adj","cat all_1_unpaired.fastq | perl -lane 'print $F[0];' > all_1_unpaired_complete.fastq.adj","cat all_2_unpaired.fastq | perl -lane 'print $F[0];' > all_2_unpaired_complete.fastq.adj"])
+"""The files need to be cleaned after using SRAtoolkit before running on Trinity."""
+elapsed_time5 = time.time() - start_time
+#print "Cleaning files took %d seconds" %elapsed_time5
 
-elapsed_time4 = time.time() - elapsed_time3
-print "Cleaning files took %d seconds" %elapsed_time4
+
+print pool.map(call1,["qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_paired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_paired_complete.fastq.adj --pairs_together --JELLY_CPU 8 --PARALLEL_STATS --output /diag/home/jfeusier/all_samples_paired","qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_unpaired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_unpaired_complete.fastq.adj  --JELLY_CPU 8 --output /diag/home/jfeusier/all_samples_unpaired"])
+"""This Trinity command normalizes the files to try to negate platform and other issues."""
+#print "Trinity for paired and unpaired reads are sent to a job.  Please use the command 'qstat' to check for completion."
 
 
-#print pool.map(call1,["qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_paired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_paired_complete.fastq.adj --pairs_together --JELLY_CPU 8 --PARALLEL_STATS --output /diag/home/jfeusier/all_samples_paired","qsub -P diag -pe make 8 -q highmem.q -V -b y /diag/software/trinityrnaseq_r20131110/util/normalize_by_kmer_coverage.pl --seqType fq --JM 100G --max_cov 50 --left /diag/cloud/jfeusier/all_1_unpaired_complete.fastq.adj --right /diag/cloud/jfeusier/all_2_unpaired_complete.fastq.adj  --JELLY_CPU 8 --output /diag/home/jfeusier/all_samples_unpaired"])
 
-#elapsed_time5 = time.time() - elapsed_time4
-#print "Trinity for paired reads took %d seconds" %elapsed_time5
+
+
+server = smtplib.SMTP()
+server.connect('smtp.gmail.com',587) # for eg. host = 'smtp.gmail.com', port = 587
+server.ehlo()
+server.starttls()
+server.login('juliefeusier@gmail.com', 'xxxxxxxxx')
+user = 'juliefeusier@gmail.com'
+"""I am logging into my gmail account.  This won't work because I have not added in my password."""
+
+
+fromaddr = 'juliefeusier@gmail.com'
+tolist = 'juliefeusier@gmail.com'
+sub = 'Update'
+"""I am hardcoding this information to write to myself."""
+
+
+msg = email.MIMEMultipart.MIMEMultipart()
+msg['From'] = fromaddr
+msg['To'] = email.Utils.COMMASPACE.join(tolist)
+msg['Subject'] = sub
+#msg.attach(MIMEText(raw_input('Body: ')))
+msg.attach(MIMEText('Downloading SRA files took %d seconds \nSplitting SRA files took %d seconds\nTrimmomatic took %d seconds\nCombining files took %d seconds\nCleaning files took %d seconds\nTrinity for paired and unpaired reads are sent to a job.  Please use the command qstat to check for completion.'  %(elapsed_time1,elapsed_time2,elasped_time3,elapsed_time4,elapsed_time5)))
+msg.attach(MIMEText('sent via python', 'plain')) 
+"""I will get an email after this script has finished running so I don't have to keep looking for it."""
+
+server.sendmail(user,tolist,msg.as_string())
+server.quit()
+
+
+
+
+
 
 
 
